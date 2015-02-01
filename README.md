@@ -14,6 +14,10 @@ FIXME
 \* `lein run-dev` automatically detects code changes. Alternatively, you can run in production mode
 with `lein run`.
 
+## Swagger
+
+To see the swagger docs navigate to: `http://localhost:8080/ui/index.html`
+
 ## Configuration
 
 To configure logging see config/logback.xml. By default, the app logs to stdout and logs/.
