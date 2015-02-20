@@ -4,7 +4,9 @@
             [io.pedestal.http.body-params :as body-params]
             [io.pedestal.http.route.definition :refer [defroutes]]
             [io.pedestal.interceptor :as interceptor]
+            [io.pedestal.http.ring-middlewares :as ring]
             [io.pedestal.log :as log]
+            [ring.swagger.schema]
             [pedestal.swagger.core :as swagger]
             [pedestal.swagger.doc :as doc]
             [schema.core :as s]
@@ -21,7 +23,12 @@
   [request]
   (ring-resp/response "Hello World!"))
 
-(defn list-books
+(swagger/defhandler list-books
+  {:description "list"
+   :summary "'()"
+   :parameters {:query {:how-many? (ring.swagger.schema/describe s/Int "slkjdflkdj")}}
+   :responses {200 {:description "stub"
+                    :schema s/Str}}}
   [request]
   (ring-resp/response "books!"))
 
@@ -43,8 +50,13 @@
                                           {::name ~name}))
                 {:pedestal.swagger.doc/doc ~doc})))
 
+(def Url
+  s/Str)
+
 (s/defschema Book
+  "Description?"
   {:name s/Str
+   :cover-image Url
    :description s/Str})
 
 (defasynchandler describe-book
@@ -55,9 +67,24 @@
                     :schema Book}}}
   [request]
   (go
-    (<! (timeout 3000))
-    (ring-resp/response {:name "A Story of some things!"
-                         :description "It's a book! It's got pages!"})))
+    (log/info :req (pr-str request))
+    (let [id (get-in request [:path-params :id])]
+      (ring-resp/response
+       (condp = id
+         1 {:name "A Story of some things!"
+            :description "It's a book! It's got pages!"}
+         2 {:name "Another one."
+            :cover-image "bar"
+            :description "It's another book! It's also got pages!"})))))
+
+(swagger/defhandler who-cares
+  {:description "also POST it!"
+   :summary "POST it!"
+   :parameters {:body {:id s/Str}}
+   :responses {200 {:description "Done"
+                    :schema s/Str}}}
+  [_]
+  (ring-resp/response "done"))
 
 (swagger/defroutes routes
   {:title "My App"
@@ -72,6 +99,8 @@
                      (swagger/coerce-params)
                      (swagger/validate-response)]
      ["/about" {:get about-page}]
+     ["/test" ^:interceptors [ring/multipart-params]
+      {:post who-cares}]
      ["/book" {:get list-books}
       ["/:id"
        {:get describe-book}]]
